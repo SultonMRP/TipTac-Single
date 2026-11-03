@@ -1,12 +1,14 @@
 # TipTac - Single
 
-TipTac tooltip suite for **WotLK 3.3.5a** with a **Paragon** line for **SingleWoW**.
+TipTac tooltip suite for **WotLK 3.3.5a**. Paragon on player tips is optional.
 
-Uses the server `SWParagonOf` stream (same as SingleWoWParagon and Shadow Unit Frames - Single). Your own tip shows `Paragon: 0` until the server sends a number.
+OptionalDeps: **AethroParagon** and **SingleWoWParagon**. If neither is loaded, TipTac does not add a paragon line.
+
+On SingleWoW, SingleWoWParagon already writes **Paragon ##**, so TipTac does not add a second line.
 
 ## Install
 
-Download **TipTac.Single.1.0.zip** from [Releases](https://github.com/SultonMRP/TipTac-Single/releases) and extract it into `Interface\AddOns` so you have:
+Download **TipTac.Single.1.1.zip** from [Releases](https://github.com/SultonMRP/TipTac-Single/releases) and extract it into `Interface\AddOns` so you have:
 
 `Interface\AddOns\TipTac\TipTac.toc`  
 `Interface\AddOns\TipTacOptions\TipTacOptions.toc`  
@@ -17,12 +19,11 @@ Then `/reload`.
 
 ## Use
 
-Hover a player. The tip shows **Paragon: ##** when a number is known.
+Hover a player. With SingleWoWParagon you see its paragon line only. With AethroParagon, TipTac can show **Paragon: ##**.
 
-`/tip` → **Special** → **Show Paragon Level**.
+`/tip` → **Special** → **Show Paragon Level** (only if one of those addons is loaded).
 
 ## Notes
 
 - Based on TipTac `10.05.01` (`## Interface: 30300`)
-- Other players stay blank until the server has sent their name.
 - Original addon by Aezay (Earthen Ring EU).

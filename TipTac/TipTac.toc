@@ -4,5 +4,5 @@
 ## Author: Aezay (Earthen Ring EU)
 ## Notes: Highly Customizable Tooltip Enhancement Addon
 ## SavedVariables: TipTac_Config
-## OptionalDeps: SingleWoWParagon
+## OptionalDeps: AethroParagon, SingleWoWParagon
 core.lua

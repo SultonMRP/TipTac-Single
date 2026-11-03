@@ -33,8 +33,22 @@ local function ShowItemLevelEnabled()
 	return (Cfg("showPlayerItemLevel",true) ~= false);
 end
 
+local function HasAethroParagon()
+	return (IsAddOnLoaded("AethroParagon"));
+end
+
+local function HasSingleWoWParagon()
+	return (IsAddOnLoaded("SingleWoWParagon"));
+end
+
+local function HasParagonAddon()
+	return HasAethroParagon() or HasSingleWoWParagon();
+end
+
+-- Tip line only if a paragon addon is loaded. SingleWoWParagon already writes
+-- "Paragon 9" itself, so we do not add a second line on that client.
 local function ShowParagonEnabled()
-	return (Cfg("showParagonLevel",true) ~= false);
+	return HasParagonAddon() and (Cfg("showParagonLevel",true) ~= false) and (not HasSingleWoWParagon());
 end
 
 local function NormName(name)
@@ -44,52 +58,35 @@ local function NormName(name)
 	return string.lower(name);
 end
 
-local function CacheParagonName(name, level)
+local function CacheParagonUnit(unit, level)
 	level = tonumber(level);
-	name = NormName(name);
-	if (level == nil) or (level < 0) or (not name) then
+	if (not level) or (level < 0) or (not unit) then
 		return;
 	end
-	paragonCache[name] = level;
+	local guid = UnitGUID(unit);
+	local name = UnitName(unit);
+	if (guid) then
+		paragonCache[guid] = level;
+	end
+	if (name) then
+		paragonCache[NormName(name)] = level;
+	end
 	return level;
 end
 
 local function GetCachedParagon(unit)
-	if (not unit) then
+	if (not unit) or (not HasAethroParagon()) then
 		return;
 	end
-	if (ShadowUF) and (ShadowUF.Paragon) and (ShadowUF.Paragon.GetLevel) then
-		local level = ShadowUF.Paragon:GetLevel(unit);
-		if (level ~= nil) then
-			return level;
+	if (UnitIsUnit(unit,"player")) and (ParagonCharacterLevel) and (ParagonCharacterLevel.Text) then
+		return CacheParagonUnit("player",ParagonCharacterLevel.Text:GetText());
+	end
+	if (UnitIsUnit(unit,"target")) and (ParagonTargetLevel) and (ParagonTargetLevel.Text) then
+		if (ParagonTargetLevel.lastTargetGUID == UnitGUID(unit)) and (ParagonTargetLevel:GetAlpha() > 0) then
+			return CacheParagonUnit("target",ParagonTargetLevel.Text:GetText());
 		end
 	end
-	local level = paragonCache[NormName(UnitName(unit)) or ""];
-	if (level ~= nil) then
-		return level;
-	end
-	if (UnitIsUnit(unit,"player")) then
-		return 0;
-	end
-end
-
-local function ParseParagonOf(prefix, message)
-	local payload = message;
-	if (prefix == "SWParagonOf") then
-		payload = message;
-	elseif (prefix == "SingleWoWParagon") or (prefix == "SWParagon") then
-		payload = string.match(message or "","^SWParagonOf%s*|%s*(.+)$");
-	else
-		return;
-	end
-	if (not payload) then
-		return;
-	end
-	local name, level = string.match(payload,"^([^;]+);(%-?%d+)");
-	if (name) then
-		name = strtrim(name);
-	end
-	return name, level;
+	return paragonCache[UnitGUID(unit) or ""] or paragonCache[NormName(UnitName(unit)) or ""];
 end
 
 local function ShowParagonOnTip(unit, isUpdate)
@@ -99,6 +96,17 @@ local function ShowParagonOnTip(unit, isUpdate)
 	local level = GetCachedParagon(unit);
 	if (level ~= nil) then
 		SetOrAddLine(PARAGON_PREFIX,level,isUpdate);
+		return;
+	end
+	if (not SendClientRequest) then
+		return;
+	end
+	if (UnitIsUnit(unit,"player")) then
+		SetOrAddLine(PARAGON_PREFIX,"...",isUpdate);
+		SendClientRequest("ParagonAnniversary",1);
+	elseif (UnitIsUnit(unit,"target")) then
+		SetOrAddLine(PARAGON_PREFIX,"...",isUpdate);
+		SendClientRequest("ParagonAnniversary",6);
 	end
 end
 
@@ -283,26 +291,34 @@ gtt:HookScript("OnTooltipSetUnit",function(self,...)
 	end
 end);
 
--- SingleWoW server push: SWParagonOf | Name;level
-local paragonListener = CreateFrame("Frame");
-paragonListener:RegisterEvent("CHAT_MSG_ADDON");
-paragonListener:SetScript("OnEvent",function(_,_,prefix,message)
-	local name, level = ParseParagonOf(prefix,message);
-	if (not name) or (CacheParagonName(name,level) == nil) then
+local function TipStillShowing(unit)
+	local tipName, tipUnit = gtt:GetUnit();
+	if (not tipName) then
 		return;
 	end
-	local tipName, tipUnit = gtt:GetUnit();
-	if (tipName) and (NormName(tipName) == NormName(name)) then
-		SetOrAddLine(PARAGON_PREFIX,tonumber(level),true);
-	elseif (tipUnit) and (NormName(UnitName(tipUnit)) == NormName(name)) then
-		SetOrAddLine(PARAGON_PREFIX,tonumber(level),true);
+	if (tipUnit) and (UnitExists(tipUnit)) and (UnitIsUnit(tipUnit,unit)) then
+		return true;
 	end
-end);
+	return (tipName == UnitName(unit));
+end
 
-if (not IsAddOnLoaded("SingleWoWParagon")) then
-	local me = UnitName("player");
-	if (me) and (SendAddonMessage) then
-		SendAddonMessage("SWHello","1","WHISPER",me);
+-- AethroParagon only. SingleWoWParagon draws its own tip line.
+if (HasAethroParagon()) then
+	if (UIParagon_OnClientReceiveLevel) then
+		hooksecurefunc("UIParagon_OnClientReceiveLevel",function(_,arg_table)
+			local level = CacheParagonUnit("player",arg_table and arg_table[1]);
+			if (level ~= nil) and (TipStillShowing("player")) then
+				SetOrAddLine(PARAGON_PREFIX,level,true);
+			end
+		end);
+	end
+	if (UIParagon_OnReceiveTargetLevel) then
+		hooksecurefunc("UIParagon_OnReceiveTargetLevel",function(_,arg_table)
+			local level = CacheParagonUnit("target",arg_table and arg_table[1]);
+			if (level ~= nil) and (TipStillShowing("target")) then
+				SetOrAddLine(PARAGON_PREFIX,level,true);
+			end
+		end);
 	end
 end
-CacheParagonName(UnitName("player"),0);
+

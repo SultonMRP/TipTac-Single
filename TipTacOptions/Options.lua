@@ -174,11 +174,13 @@ local options = {
 	},
 };
 
--- SingleWoW paragon (SWParagonOf). Same line as Aethro TipTac, different server.
-for _, page in ipairs(options) do
-	if (page[0] == "Special") then
-		page[#page + 1] = { type = "Check", var = "showParagonLevel", label = "Show Paragon Level", tip = "Shows Paragon: ## on player tips. Uses SingleWoW SWParagonOf. Yourself shows 0 until the server sends a number. Other players show a number after the server has named them." };
-		break;
+-- Paragon tip line only if AethroParagon or SingleWoWParagon is loaded.
+if (IsAddOnLoaded("AethroParagon") or IsAddOnLoaded("SingleWoWParagon")) then
+	for _, page in ipairs(options) do
+		if (page[0] == "Special") then
+			page[#page + 1] = { type = "Check", var = "showParagonLevel", label = "Show Paragon Level", tip = "Shows Paragon on player tips when AethroParagon or SingleWoWParagon is loaded. Hidden if neither addon is enabled. On SingleWoW the official addon writes the line, so TipTac does not add a second one." };
+			break;
+		end
 	end
 end
 

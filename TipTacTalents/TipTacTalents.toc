@@ -3,5 +3,5 @@
 ## Title: TipTacTalents
 ## Author: Aezay (Earthen Ring EU)
 ## Notes: Adds Talent Spec to Player Tooltips
-## OptionalDeps: TipTac, SingleWoWParagon
+## OptionalDeps: TipTac, AethroParagon, SingleWoWParagon
 core.lua
